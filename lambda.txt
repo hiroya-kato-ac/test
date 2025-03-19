@@ -1,0 +1,33 @@
+import boto3
+import json
+
+dynamodb = boto3.resource("dynamodb", region_name="ap-northeast-1")
+
+table =dynamodb.Table("Sandbox")
+
+json_data = [
+    {"NumberOfEmployees": 1000, "Name": "Edge Communications", "Id": "001gL000000THBxQAO"},
+    {"NumberOfEmployees": 9000, "Name": "Burlington Textiles Corp of America", "Id": "001gL000000THByQAO"},
+    {"NumberOfEmployees": 2680, "Name": "Pyramid Construction Inc.", "Id": "001gL000000THBzQAO"},
+    {"NumberOfEmployees": 120, "Name": "Dickenson plc", "Id": "001gL000000THC0QAO"},
+    {"NumberOfEmployees": 5600, "Name": "Grand Hotels & Resorts Ltd", "Id": "001gL000000THC1QAO"},
+    {"NumberOfEmployees": 145000, "Name": "United Oil & Gas Corp.", "Id": "001gL000000THC2QAO"},
+    {"NumberOfEmployees": 12300, "Name": "Express Logistics and Transport", "Id": "001gL000000THC3QAO"},
+    {"NumberOfEmployees": 39000, "Name": "University of Arizona", "Id": "001gL000000THC4QAO"},
+    {"NumberOfEmployees": 24000, "Name": "United Oil & Gas, UK", "Id": "001gL000000THC5QAO"},
+    {"NumberOfEmployees": 3000, "Name": "United Oil & Gas, Singapore", "Id": "001gL000000THC6QAO"},
+    {"NumberOfEmployees": 265, "Name": "GenePoint", "Id": "001gL000000THC7QAO"},
+    {"NumberOfEmployees": None, "Name": "sForce", "Id": "001gL000000THC8QAO"},
+    {"NumberOfEmployees": None, "Name": "Sample Account for Entitlements", "Id": "001gL000000THC9QAO"},
+]
+
+
+def lambda_handler(event, context):
+    print(event)
+# DynamoDB にデータを挿入
+    for item in json_data:
+    # `None` は DynamoDB にそのまま入れられないので削除する
+        item = {k: v for k, v in item.items() if v is not None}
+    
+    # `put_item()` でデータを挿入
+        response = table.put_item(Item=item)
