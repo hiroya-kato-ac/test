@@ -1,33 +1,74 @@
-import boto3
-import json
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM Role for Cross-Account deployment with DynamoDB GetItem, CloudWatch Logs Write, and S3 GetObject permissions, and a DynamoDB table creation.
 
-dynamodb = boto3.resource("dynamodb", region_name="ap-northeast-1")
+Resources:
+  # ==========================================================
+  # 1. IAM ???????? (yayoiRole / yayoiPolicy)
+  # ==========================================================
+  MyServiceIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: yayoiRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com 
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: yayoiPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # 1. DynamoDB GetItem ?? (?????? GuidanceTable ???)
+              - Sid: AllowDynamoDBGetItem
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/GuidanceTable2" 
+              # 2. CloudWatch Logs ??????
+              - Sid: AllowCloudWatchLogsWrite
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*" 
+              # 3. S3 GetObject ??
+              - Sid: AllowS3GetObject
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                # S3?????? MyFixedS3BucketName ??? (???)
+                Resource: !Sub "arn:aws:s3:::MyFixedS3BucketName/*" 
 
-table =dynamodb.Table("Sandbox")
+  # ==========================================================
+  # 2. DynamoDB ?????? (GuidanceTable)
+  # ==========================================================
+  GuidanceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: GuidanceTable2
+      AttributeDefinitions:
+        - AttributeName: guidance_id
+          AttributeType: S # String?
+      KeySchema:
+        - AttributeName: guidance_id
+          KeyType: HASH # ?????????
+      # ????????????????????
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
 
-json_data = [
-    {"NumberOfEmployees": 1000, "Name": "Edge Communications", "Id": "001gL000000THBxQAO"},
-    {"NumberOfEmployees": 9000, "Name": "Burlington Textiles Corp of America", "Id": "001gL000000THByQAO"},
-    {"NumberOfEmployees": 2680, "Name": "Pyramid Construction Inc.", "Id": "001gL000000THBzQAO"},
-    {"NumberOfEmployees": 120, "Name": "Dickenson plc", "Id": "001gL000000THC0QAO"},
-    {"NumberOfEmployees": 5600, "Name": "Grand Hotels & Resorts Ltd", "Id": "001gL000000THC1QAO"},
-    {"NumberOfEmployees": 145000, "Name": "United Oil & Gas Corp.", "Id": "001gL000000THC2QAO"},
-    {"NumberOfEmployees": 12300, "Name": "Express Logistics and Transport", "Id": "001gL000000THC3QAO"},
-    {"NumberOfEmployees": 39000, "Name": "University of Arizona", "Id": "001gL000000THC4QAO"},
-    {"NumberOfEmployees": 24000, "Name": "United Oil & Gas, UK", "Id": "001gL000000THC5QAO"},
-    {"NumberOfEmployees": 3000, "Name": "United Oil & Gas, Singapore", "Id": "001gL000000THC6QAO"},
-    {"NumberOfEmployees": 265, "Name": "GenePoint", "Id": "001gL000000THC7QAO"},
-    {"NumberOfEmployees": None, "Name": "sForce", "Id": "001gL000000THC8QAO"},
-    {"NumberOfEmployees": None, "Name": "Sample Account for Entitlements", "Id": "001gL000000THC9QAO"},
-]
-
-
-def lambda_handler(event, context):
-    print(event)
-# DynamoDB にデータを挿入
-    for item in json_data:
-    # `None` は DynamoDB にそのまま入れられないので削除する
-        item = {k: v for k, v in item.items() if v is not None}
-    
-    # `put_item()` でデータを挿入
-        response = table.put_item(Item=item)
+Outputs:
+  RoleArn:
+    Description: ARN of the created IAM Role
+    Value: !GetAtt MyServiceIAMRole.Arn
+  RoleName:
+    Description: Name of the created IAM Role
+    Value: !Ref MyServiceIAMRole
+  GuidanceTableName:
+    Description: Name of the created DynamoDB Table
+    Value: !Ref GuidanceTable
