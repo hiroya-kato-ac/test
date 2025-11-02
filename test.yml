@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM Role for Cross-Account deployment with DynamoDB GetItem, CloudWatch Logs Write, and S3 GetObject permissions, and a DynamoDB table creation.
+
+Resources:
+  # ==========================================================
+  # 1. IAM ???????? (yayoiRole / yayoiPolicy)
+  # ==========================================================
+  MyServiceIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: yayoiRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com 
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: yayoiPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # 1. DynamoDB GetItem ?? (?????? GuidanceTable ???)
+              - Sid: AllowDynamoDBGetItem
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/GuidanceTable2" 
+              # 2. CloudWatch Logs ??????
+              - Sid: AllowCloudWatchLogsWrite
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*" 
+              # 3. S3 GetObject ??
+              - Sid: AllowS3GetObject
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                # S3?????? MyFixedS3BucketName ??? (???)
+                Resource: !Sub "arn:aws:s3:::MyFixedS3BucketName/*" 
+
+  # ==========================================================
+  # 2. DynamoDB ?????? (GuidanceTable)
+  # ==========================================================
+  GuidanceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: GuidanceTable2
+      AttributeDefinitions:
+        - AttributeName: guidance_id
+          AttributeType: S # String?
+      KeySchema:
+        - AttributeName: guidance_id
+          KeyType: HASH # ?????????
+      # ????????????????????1
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+Outputs:
+  RoleArn:
+    Description: ARN of the created IAM Role
+    Value: !GetAtt MyServiceIAMRole.Arn
+  RoleName:
+    Description: Name of the created IAM Role
+    Value: !Ref MyServiceIAMRole
+  GuidanceTableName:
+    Description: Name of the created DynamoDB Table
+    Value: !Ref GuidanceTable
